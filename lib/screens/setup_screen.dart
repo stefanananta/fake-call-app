@@ -25,9 +25,17 @@ class _SetupScreenState extends State<SetupScreen> {
   String? _currentCallId;
 
   @override
-  void initState() {
+ void initState() {
     super.initState();
     _listenCallKit();
+    _requestPermission();
+  }
+
+  Future<void> _requestPermission() async {
+    await FlutterCallkitIncoming.requestNotificationPermission({
+      "rationaleMessagePermission": "Allow notifications to receive fake calls",
+      "postNotificationMessageRequired": "Allow notifications to receive fake calls",
+    });
   }
 
   void _listenCallKit() {
