@@ -41,7 +41,10 @@ class _SetupScreenState extends State<SetupScreen> {
   void _listenCallKit() {
     FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
       if (event == null) return;
-      switch (event.event) {
+   switch (event.event) {
+        case Event.actionCallAccept:
+          await FlutterCallkitIncoming.setCallConnected(_currentCallId!);
+          break;
         case Event.actionCallDecline:
         case Event.actionCallEnded:
           _endCall();
