@@ -405,7 +405,8 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: SizedBox.expand(
+        child: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -413,6 +414,8 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
             colors: [Color(0xFF1C2F4A), Color(0xFF0D1A2B), Color(0xFF101A10)],
           ),
         ),
+        width: double.infinity,
+        height: double.infinity,
         child: SafeArea(
           child: Column(
             children: [
