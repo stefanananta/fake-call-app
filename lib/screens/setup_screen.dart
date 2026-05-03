@@ -44,6 +44,12 @@ class _SetupScreenState extends State<SetupScreen> {
    switch (event.event) {
         case Event.actionCallAccept:
           await FlutterCallkitIncoming.setCallConnected(_currentCallId!);
+          await FlutterCallkitIncoming.startCall(CallKitParams(
+            id: _currentCallId,
+            nameCaller: _nameController.text,
+            handle: _numberController.text,
+            type: 0,
+          ));
           break;
         case Event.actionCallDecline:
         case Event.actionCallEnded:
