@@ -38,18 +38,21 @@ class _SetupScreenState extends State<SetupScreen> {
     });
   }
 
-  void _listenCallKit() {
-    FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
+void _listenCallKit() {
+    FlutterCallkitIncoming.onEvent.listen((CallEvent? event) async {
       if (event == null) return;
-   switch (event.event) {
+      switch (event.event) {
         case Event.actionCallAccept:
           await FlutterCallkitIncoming.setCallConnected(_currentCallId!);
-          await FlutterCallkitIncoming.startCall(CallKitParams(
-            id: _currentCallId,
-            nameCaller: _nameController.text,
-            handle: _numberController.text,
-            type: 0,
-          ));
+          if (mounted) {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ActiveCallScreen(
+                callerName: _nameController.text,
+                callerNumber: _numberController.text,
+                callId: _currentCallId!,
+              ),
+            ));
+          }
           break;
         case Event.actionCallDecline:
         case Event.actionCallEnded:
@@ -348,6 +351,125 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class ActiveCallScreen extends StatefulWidget {
+  final String callerName;
+  final String callerNumber;
+  final String callId;
+
+  const ActiveCallScreen({
+    super.key,
+    required this.callerName,
+    required this.callerNumber,
+    required this.callId,
+  });
+
+  @override
+  State<ActiveCallScreen> createState() => _ActiveCallScreenState();
+}
+
+class _ActiveCallScreenState extends State<ActiveCallScreen> {
+  int _seconds = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() => _seconds++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String get _duration {
+    final m = (_seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (_seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  void _endCall() async {
+    await FlutterCallkitIncoming.endCall(widget.callId);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1C2F4A), Color(0xFF0D1A2B), Color(0xFF101A10)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 48),
+              Text(_duration,
+                  style: const TextStyle(color: Colors.white54, fontSize: 15)),
+              const SizedBox(height: 4),
+              Text(widget.callerName,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              const Text('Connected',
+                  style: TextStyle(color: Colors.white54, fontSize: 15)),
+              const SizedBox(height: 32),
+              Container(
+                width: 100, height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.15),
+                ),
+                child: Center(
+                  child: Text(
+                    widget.callerName.isNotEmpty
+                        ? widget.callerName[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 40,
+                        fontWeight: FontWeight.w300),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: _endCall,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 72, height: 72,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFFF3B30),
+                      ),
+                      child: const Icon(Icons.call_end,
+                          color: Colors.white, size: 32),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('end call',
+                        style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 48),
+            ],
+          ),
         ),
       ),
     );
