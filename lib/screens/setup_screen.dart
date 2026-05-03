@@ -42,17 +42,22 @@ void _listenCallKit() {
     FlutterCallkitIncoming.onEvent.listen((CallEvent? event) async {
       if (event == null) return;
       switch (event.event) {
-        case Event.actionCallAccept:
+       case Event.actionCallAccept:
           await FlutterCallkitIncoming.setCallConnected(_currentCallId!);
-          if (mounted) {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => ActiveCallScreen(
-                callerName: _nameController.text,
-                callerNumber: _numberController.text,
-                callId: _currentCallId!,
-              ),
-            ));
-          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => ActiveCallScreen(
+                    callerName: _nameController.text,
+                    callerNumber: _numberController.text,
+                    callId: _currentCallId!,
+                  ),
+                ),
+                (route) => false,
+              );
+            }
+          });
           break;
         case Event.actionCallDecline:
         case Event.actionCallEnded:
