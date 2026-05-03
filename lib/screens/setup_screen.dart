@@ -23,12 +23,13 @@ class _SetupScreenState extends State<SetupScreen> {
   int _countdown = 0;
   Timer? _timer;
   String? _currentCallId;
+  bool _isCallActive = false;
 
   @override
- void initState() {
+  void initState() {
     super.initState();
-    _listenCallKit();
     _requestPermission();
+    _listenCallKit();
   }
 
   Future<void> _requestPermission() async {
@@ -38,30 +39,23 @@ class _SetupScreenState extends State<SetupScreen> {
     });
   }
 
-void _listenCallKit() {
+  void _listenCallKit() {
     FlutterCallkitIncoming.onEvent.listen((CallEvent? event) async {
       if (event == null) return;
       switch (event.event) {
-       case Event.actionCallAccept:
+        case Event.actionCallAccept:
           await FlutterCallkitIncoming.setCallConnected(_currentCallId!);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (_) => ActiveCallScreen(
-                    callerName: _nameController.text,
-                    callerNumber: _numberController.text,
-                    callId: _currentCallId!,
-                  ),
-                ),
-                (route) => false,
-              );
-            }
-          });
+          if (mounted) setState(() => _isCallActive = true);
           break;
         case Event.actionCallDecline:
         case Event.actionCallEnded:
-          _endCall();
+          if (mounted) {
+            setState(() {
+              _isCallActive = false;
+              _isCounting = false;
+              _countdown = 0;
+            });
+          }
           break;
         default:
           break;
@@ -71,7 +65,6 @@ void _listenCallKit() {
 
   Future<void> _showNativeCall() async {
     _currentCallId = const Uuid().v4();
-
     final params = CallKitParams(
       id: _currentCallId,
       nameCaller: _nameController.text.isEmpty ? 'Unknown' : _nameController.text,
@@ -113,7 +106,6 @@ void _listenCallKit() {
         ringtonePath: 'system_ringtone_default',
       ),
     );
-
     await FlutterCallkitIncoming.showCallkitIncoming(params);
   }
 
@@ -124,7 +116,6 @@ void _listenCallKit() {
       _countdown = _delaySeconds.toInt();
       _isCounting = true;
     });
-
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() => _countdown--);
       if (_countdown <= 0) {
@@ -140,13 +131,6 @@ void _listenCallKit() {
     if (_currentCallId != null) {
       FlutterCallkitIncoming.endCall(_currentCallId!);
     }
-    setState(() {
-      _isCounting = false;
-      _countdown = 0;
-    });
-  }
-
-  void _endCall() {
     setState(() {
       _isCounting = false;
       _countdown = 0;
@@ -204,6 +188,19 @@ void _listenCallKit() {
 
   @override
   Widget build(BuildContext context) {
+    // Show active call screen inline when call is accepted
+    if (_isCallActive) {
+      return ActiveCallScreen(
+        callerName: _nameController.text,
+        callerNumber: _numberController.text,
+        callId: _currentCallId ?? '',
+        onEnd: () async {
+          await FlutterCallkitIncoming.endCall(_currentCallId!);
+          setState(() => _isCallActive = false);
+        },
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
       body: SafeArea(
@@ -362,16 +359,19 @@ void _listenCallKit() {
   }
 }
 
+// ── Active Call Screen ──
 class ActiveCallScreen extends StatefulWidget {
   final String callerName;
   final String callerNumber;
   final String callId;
+  final VoidCallback? onEnd;
 
   const ActiveCallScreen({
     super.key,
     required this.callerName,
     required this.callerNumber,
     required this.callId,
+    this.onEnd,
   });
 
   @override
@@ -402,11 +402,6 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     return '$m:$s';
   }
 
-  void _endCall() async {
-    await FlutterCallkitIncoming.endCall(widget.callId);
-    if (mounted) Navigator.of(context).pop();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -435,7 +430,8 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                   style: TextStyle(color: Colors.white54, fontSize: 15)),
               const SizedBox(height: 32),
               Container(
-                width: 100, height: 100,
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withOpacity(0.15),
@@ -454,11 +450,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
               ),
               const Spacer(),
               GestureDetector(
-                onTap: _endCall,
+                onTap: widget.onEnd,
                 child: Column(
                   children: [
                     Container(
-                      width: 72, height: 72,
+                      width: 72,
+                      height: 72,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         color: Color(0xFFFF3B30),
